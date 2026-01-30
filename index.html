@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>資源導航</title>
+    <style>
+        :root {
+            /* --- iOS Design Tokens --- */
+            --c-bg: #F2F2F7;
+            --c-card: #FFFFFF;
+            --c-text-primary: #000000;
+            --c-text-secondary: #8E8E93;
+            --c-accent: #007AFF;
+            --c-separator: #C6C6C8;
+            --c-icon-bg: #F2F2F7;
+            
+            --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.08);
+            
+            --radius-icon: 16px;
+            --radius-card: 18px;
+            --radius-btn: 50px;
+            
+            --ease-ios: cubic-bezier(0.25, 1, 0.5, 1);
+            --h-safe-area: env(safe-area-inset-top);
+        }
+
+        /* --- Reset & Global --- */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background-color: var(--c-bg);
+            color: var(--c-text-primary);
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        a { text-decoration: none; color: inherit; }
+        button { border: none; background: none; font-family: inherit; padding: 0; cursor: pointer; outline: none; }
+
+        /* --- Header Area --- */
+        .header-hero {
+            padding: calc(20px + var(--h-safe-area)) 24px 10px;
+            background: var(--c-bg);
+        }
+        .header-hero h1 {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+            background: linear-gradient(135deg, #000 0%, #333 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-hero p {
+            color: var(--c-text-secondary);
+            font-size: 15px;
+            font-weight: 500;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        /* --- Sticky Controls --- */
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(242, 242, 247, 0.88);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+            padding-bottom: 8px;
+            transition: background 0.3s;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px 0;
+            max-width: 1100px;
+            margin: 0 auto;
+            gap: 12px;
+        }
+
+        /* Segmented Control */
+        .segmented-control {
+            background-color: rgba(118, 118, 128, 0.12);
+            padding: 2px;
+            border-radius: 9px;
+            display: flex;
+            flex: 1;
+            max-width: 400px;
+            height: 36px;
+            position: relative;
+        }
+
+        .seg-btn {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--c-text-primary);
+            border-radius: 7px;
+            position: relative;
+            z-index: 2;
+            transition: all 0.2s var(--ease-ios);
+        }
+
+        .seg-btn.active {
+            font-weight: 600;
+        }
+
+        /* Sliding Background for Segmented Control */
+        .seg-bg {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: calc(50% - 2px);
+            height: calc(100% - 4px);
+            background: #fff;
+            border-radius: 7px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04);
+            transition: transform 0.25s var(--ease-ios);
+            z-index: 1;
+        }
+        /* State for sliding background */
+        .segmented-control[data-state="website"] .seg-bg { transform: translateX(100%); }
+
+        /* View Toggle Button */
+        .btn-view-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(118, 118, 128, 0.1);
+            color: var(--c-accent);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-view-toggle:active { background: rgba(118, 118, 128, 0.2); transform: scale(0.95); }
+
+        /* Scrollable Tabs */
+        .tabs-scroll-area {
+            padding-top: 12px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        
+        .tabs-group {
+            display: none;
+            padding: 0 20px 4px; /* Bottom padding for shadow */
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tabs-group.active { display: flex; animation: fadeIn 0.3s ease; }
+        .tabs-group::-webkit-scrollbar { display: none; }
+
+        .chip {
+            background: var(--c-card);
+            padding: 7px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--c-text-primary);
+            border-radius: 20px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            transition: all 0.2s;
+            flex-shrink: 0;
+            border: 0.5px solid rgba(0,0,0,0.02);
+        }
+        .chip:active { transform: scale(0.96); }
+        .chip.active {
+            background: var(--c-text-primary);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        /* --- Main Content --- */
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 20px 60px;
+            min-height: 60vh;
+        }
+
+        .section-container {
+            display: none;
+            animation: slideUp 0.35s var(--ease-ios);
+            margin-bottom: 32px;
+        }
+        .section-container.active { display: block; }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-left: 4px;
+            display: none; /* Dynamic visibility */
+        }
+
+        /* --- Layout: Grid View (Default) --- */
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 20px 12px;
+        }
+        @media (min-width: 768px) {
+            .item-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 32px 24px; }
+        }
+
+        .item-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .item-card:active { transform: scale(0.95); opacity: 0.8; }
+
+        .icon-wrapper {
+            width: 68px;
+            height: 68px;
+            font-size: 34px;
+            background: var(--c-card);
+            border-radius: var(--radius-card); /* Continuous curvature approximation */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+        }
+        /* Subtle gradient overlay for polish */
+        .icon-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
+            opacity: 0.3;
+        }
+
+        .item-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--c-text-primary);
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        /* --- Layout: List View --- */
+        body.view-list .item-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            background: var(--c-card);
+            border-radius: 14px;
+            box-shadow: var(--shadow-card);
+        }
+
+        body.view-list .item-card {
+            flex-direction: row;
+            padding: 14px 16px;
+            border-bottom: 0.5px solid var(--c-separator);
+            height: auto;
+            align-items: center;
+        }
+        body.view-list .item-card:last-child { border-bottom: none; }
+        body.view-list .item-card:active { background-color: #E5E5EA; transform: none; opacity: 1; }
+
+        body.view-list .icon-wrapper {
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+            border-radius: 8px;
+            margin-bottom: 0;
+            margin-right: 14px;
+            background: var(--c-icon-bg);
+            box-shadow: none;
+        }
+
+        body.view-list .item-name {
+            font-size: 16px;
+            font-weight: 400;
+            text-align: left;
+            flex: 1;
+        }
+
+        /* Arrow in List View */
+        body.view-list .item-card::after {
+            content: '›';
+            font-size: 20px;
+            color: var(--c-text-secondary);
+            font-weight: 500;
+            margin-left: 8px;
+            opacity: 0.5;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <header class="header-hero">
+        <h1>資源導航</h1>
+        <p>Resource Navigation</p>
+    </header>
+
+    <div class="sticky-nav">
+        <!-- Controls Row -->
+        <div class="controls-row">
+            <div class="segmented-control" id="seg-control" data-state="download">
+                <div class="seg-bg"></div>
+                <button class="seg-btn active" data-mode="download">軟體下載</button>
+                <button class="seg-btn" data-mode="website">常用網站</button>
+            </div>
+            
+            <button class="btn-view-toggle" id="btn-toggle-view" title="切換視圖">⊞</button>
+        </div>
+
+        <!-- Horizontal Tabs -->
+        <div class="tabs-scroll-area">
+            <!-- Group: Download -->
+            <div class="tabs-group active" id="tabs-download">
+                <button class="chip active" data-target="all-download">所有</button>
+                <button class="chip" data-target="browsers">瀏覽器</button>
+                <button class="chip" data-target="communication-dl">通訊</button>
+                <button class="chip" data-target="tools">工具</button>
+                <button class="chip" data-target="games">遊戲</button>
+                <button class="chip" data-target="media">媒體</button>
+                <button class="chip" data-target="security">安全</button>
+            </div>
+
+            <!-- Group: Website -->
+            <div class="tabs-group" id="tabs-website">
+                <button class="chip" data-target="all-website">所有</button>
+                <button class="chip" data-target="ai">AI</button>
+                <button class="chip" data-target="finance">金融</button>
+                <button class="chip" data-target="search">工具</button>
+                <button class="chip" data-target="social">社交</button>
+                <button class="chip" data-target="life">生活</button>
+            </div>
+        </div>
+    </div>
+
+    <main id="main-content">
+
+        <!-- ================= GROUP: 下載 ================= -->
+        <section id="browsers" class="section-container dl-sec active">
+            <div class="section-title">瀏覽器</div>
+            <div class="item-grid">
+                <a href="https://www.google.com/intl/en_hk/chrome/" target="_blank" class="item-card"><div class="icon-wrapper">🌍</div><div class="item-name">Chrome</div></a>
+                <a href="https://www.firefox.com/zh-TW/" target="_blank" class="item-card"><div class="icon-wrapper">🦊</div><div class="item-name">Firefox</div></a>
+                <a href="https://www.microsoft.com/en-us/edge/download" target="_blank" class="item-card"><div class="icon-wrapper">🌊</div><div class="item-name">Edge</div></a>
+                <a href="https://brave.com/download/" target="_blank" class="item-card"><div class="icon-wrapper">🦁</div><div class="item-name">Brave</div></a>
+                <a href="https://www.opera.com/download" target="_blank" class="item-card"><div class="icon-wrapper">⭕</div><div class="item-name">Opera</div></a>
+                <a href="https://www.torproject.org/download/" target="_blank" class="item-card"><div class="icon-wrapper">🧅</div><div class="item-name">Tor</div></a>
+            </div>
+        </section>
+
+        <section id="communication-dl" class="section-container dl-sec">
+            <div class="section-title">通訊軟體</div>
+            <div class="item-grid">
+                <a href="https://www.whatsapp.com/download" target="_blank" class="item-card"><div class="icon-wrapper">📞</div><div class="item-name">WhatsApp</div></a>
+                <a href="https://desktop.telegram.org" target="_blank" class="item-card"><div class="icon-wrapper">✈️</div><div class="item-name">Telegram</div></a>
+                <a href="https://www.wechat.com/" target="_blank" class="item-card"><div class="icon-wrapper">💬</div><div class="item-name">WeChat</div></a>
+                <a href="https://signal.org/download/" target="_blank" class="item-card"><div class="icon-wrapper">🔐</div><div class="item-name">Signal</div></a>
+                <a href="https://zoom.us/download" target="_blank" class="item-card"><div class="icon-wrapper">📹</div><div class="item-name">Zoom</div></a>
+            </div>
+        </section>
+
+        <section id="tools" class="section-container dl-sec">
+            <div class="section-title">系統工具</div>
+            <div class="item-grid">
+                <a href="https://www.win-rar.com/download.html?&L=0" target="_blank" class="item-card"><div class="icon-wrapper">📚</div><div class="item-name">WinRAR</div></a>
+                <a href="https://www.7-zip.org/" target="_blank" class="item-card"><div class="icon-wrapper">📦</div><div class="item-name">7-Zip</div></a>
+                <a href="https://notepad-plus-plus.org/" target="_blank" class="item-card"><div class="icon-wrapper">📝</div><div class="item-name">Notepad++</div></a>
+                <a href="https://www.deepl.com/en/windows-app" target="_blank" class="item-card"><div class="icon-wrapper">🗣️</div><div class="item-name">DeepL</div></a>
+                <a href="https://www.python.org/downloads/" target="_blank" class="item-card"><div class="icon-wrapper">🐍</div><div class="item-name">Python</div></a>
+                <a href="https://get.adobe.com/" target="_blank" class="item-card"><div class="icon-wrapper">🎨</div><div class="item-name">Adobe</div></a>
+            </div>
+        </section>
+
+        <section id="games" class="section-container dl-sec">
+            <div class="section-title">遊戲平台</div>
+            <div class="item-grid">
+                <a href="https://store.epicgames.com/zh-Hant/" target="_blank" class="item-card"><div class="icon-wrapper">⚔️</div><div class="item-name">Epic</div></a>
+                <a href="https://store.steampowered.com/about/" target="_blank" class="item-card"><div class="icon-wrapper">🚂</div><div class="item-name">Steam</div></a>
+                <a href="https://www.gogalaxy.com/en/" target="_blank" class="item-card"><div class="icon-wrapper">🌌</div><div class="item-name">GOG</div></a>
+                <a href="https://www.ea.com/zh-tw/games/library/pc-download" target="_blank" class="item-card"><div class="icon-wrapper">🎮</div><div class="item-name">EA App</div></a>
+                <a href="https://www.ubisoft.com/" target="_blank" class="item-card"><div class="icon-wrapper">🌀</div><div class="item-name">Ubisoft</div></a>
+            </div>
+        </section>
+
+        <section id="media" class="section-container dl-sec">
+            <div class="section-title">多媒體</div>
+            <div class="item-grid">
+                <a href="https://open.spotify.com/download" target="_blank" class="item-card"><div class="icon-wrapper">🎧</div><div class="item-name">Spotify</div></a>
+            </div>
+        </section>
+
+        <section id="security" class="section-container dl-sec">
+            <div class="section-title">安全與雲端</div>
+            <div class="item-grid">
+                <a href="https://nordvpn.com/zh-tw/download/windows/" target="_blank" class="item-card"><div class="icon-wrapper">🔒</div><div class="item-name">NordVPN</div></a>
+                <a href="https://surfshark.com/download" target="_blank" class="item-card"><div class="icon-wrapper">🦈</div><div class="item-name">Surfshark</div></a>
+                <a href="https://www.purevpn.com/download" target="_blank" class="item-card"><div class="icon-wrapper">🔰</div><div class="item-name">PureVPN</div></a>
+                <a href="https://adguard.com/en/welcome.html" target="_blank" class="item-card"><div class="icon-wrapper">🛡️</div><div class="item-name">AdGuard</div></a>
+                <a href="https://www.pcloud.com/zh/download-free-online-cloud-file-storage.html" target="_blank" class="item-card"><div class="icon-wrapper">☁️</div><div class="item-name">pCloud</div></a>
+                <a href="https://ipv4.google.com/intl/en_zm/drive/download/" target="_blank" class="item-card"><div class="icon-wrapper">📁</div><div class="item-name">Drive</div></a>
+                <a href="https://www.dropbox.com/desktop" target="_blank" class="item-card"><div class="icon-wrapper">📥</div><div class="item-name">Dropbox</div></a>
+            </div>
+        </section>
+
+        <!-- ================= GROUP: 網站 ================= -->
+        <section id="ai" class="section-container web-sec">
+            <div class="section-title">AI 助手</div>
+            <div class="item-grid">
+                <a href="https://chatgpt.com" target="_blank" class="item-card"><div class="icon-wrapper">⚡</div><div class="item-name">ChatGPT</div></a>
+                <a href="https://gemini.google.com" target="_blank" class="item-card"><div class="icon-wrapper">✨</div><div class="item-name">Gemini</div></a>
+                <a href="https://claude.com/" target="_blank" class="item-card"><div class="icon-wrapper">🎭</div><div class="item-name">Claude</div></a>
+                <a href="https://www.perplexity.ai" target="_blank" class="item-card"><div class="icon-wrapper">🧠</div><div class="item-name">Perplexity</div></a>
+                <a href="https://www.deepseek.com/" target="_blank" class="item-card"><div class="icon-wrapper">🐳</div><div class="item-name">DeepSeek</div></a>
+                <a href="https://grok.com/" target="_blank" class="item-card"><div class="icon-wrapper">🚀</div><div class="item-name">Grok</div></a>
+                <a href="https://copilot.microsoft.com/" target="_blank" class="item-card"><div class="icon-wrapper">✈️</div><div class="item-name">Copilot</div></a>
+            </div>
+        </section>
+
+        <section id="finance" class="section-container web-sec">
+            <div class="section-title">銀行金融</div>
+            <div class="item-grid">
+                <a href="https://www.hsbc.com.hk/" target="_blank" class="item-card"><div class="icon-wrapper">🏛️</div><div class="item-name">HSBC</div></a>
+                <a href="https://www.bochk.com/" target="_blank" class="item-card"><div class="icon-wrapper">🏦</div><div class="item-name">中銀</div></a>
+                <a href="https://www.hangseng.com/" target="_blank" class="item-card"><div class="icon-wrapper">🐯</div><div class="item-name">恒生</div></a>
+                <a href="https://www.sc.com/hk/" target="_blank" class="item-card"><div class="icon-wrapper">🔵</div><div class="item-name">渣打</div></a>
+                <a href="https://www.citibank.com.hk/" target="_blank" class="item-card"><div class="icon-wrapper">💳</div><div class="item-name">花旗</div></a>
+                <a href="https://www.dbs.com.hk/" target="_blank" class="item-card"><div class="icon-wrapper">🪙</div><div class="item-name">星展</div></a>
+                <a href="https://www.hkbea.com/" target="_blank" class="item-card"><div class="icon-wrapper">🔴</div><div class="item-name">東亞</div></a>
+                <a href="https://www.asia.ccb.com/" target="_blank" class="item-card"><div class="icon-wrapper">🏙️</div><div class="item-name">建行</div></a>
+                <a href="https://www.fubonbank.com.hk/" target="_blank" class="item-card"><div class="icon-wrapper">💎</div><div class="item-name">富邦</div></a>
+                <a href="https://www.ppshk.com/" target="_blank" class="item-card"><div class="icon-wrapper">💸</div><div class="item-name">PPS</div></a>
+                <a href="https://www.americanexpress.com/" target="_blank" class="item-card"><div class="icon-wrapper">💳</div><div class="item-name">Amex</div></a>
+                <a href="https://www.paypal.com/" target="_blank" class="item-card"><div class="icon-wrapper">🅿️</div><div class="item-name">PayPal</div></a>
+            </div>
+        </section>
+
+        <section id="search" class="section-container web-sec">
+            <div class="section-title">搜尋與工具</div>
+            <div class="item-grid">
+                <a href="https://www.google.com" target="_blank" class="item-card"><div class="icon-wrapper">🔍</div><div class="item-name">Google</div></a>
+                <a href="https://duckduckgo.com/" target="_blank" class="item-card"><div class="icon-wrapper">🦆</div><div class="item-name">DuckGo</div></a>
+                <a href="https://hk.yahoo.com" target="_blank" class="item-card"><div class="icon-wrapper">📰</div><div class="item-name">Yahoo</div></a>
+                <a href="https://mail.google.com" target="_blank" class="item-card"><div class="icon-wrapper">📮</div><div class="item-name">Gmail</div></a>
+                <a href="https://outlook.live.com" target="_blank" class="item-card"><div class="icon-wrapper">📧</div><div class="item-name">Outlook</div></a>
+                <a href="https://proton.me" target="_blank" class="item-card"><div class="icon-wrapper">🔒</div><div class="item-name">Proton</div></a>
+                <a href="https://www.icloud.com/" target="_blank" class="item-card"><div class="icon-wrapper">☁️</div><div class="item-name">iCloud</div></a>
+            </div>
+        </section>
+
+        <section id="social" class="section-container web-sec">
+            <div class="section-title">社交平台</div>
+            <div class="item-grid">
+                <a href="https://lihkg.com" target="_blank" class="item-card"><div class="icon-wrapper">🐷</div><div class="item-name">LIHKG</div></a>
+                <a href="https://www.reddit.com/" target="_blank" class="item-card"><div class="icon-wrapper">👽</div><div class="item-name">Reddit</div></a>
+                <a href="https://www.facebook.com/" target="_blank" class="item-card"><div class="icon-wrapper">📘</div><div class="item-name">Facebook</div></a>
+                <a href="https://www.instagram.com/" target="_blank" class="item-card"><div class="icon-wrapper">📸</div><div class="item-name">Instagram</div></a>
+                <a href="https://www.threads.net/" target="_blank" class="item-card"><div class="icon-wrapper">🧵</div><div class="item-name">Threads</div></a>
+                <a href="https://www.xiaohongshu.com/" target="_blank" class="item-card"><div class="icon-wrapper">📕</div><div class="item-name">小紅書</div></a>
+                <a href="https://web.whatsapp.com/" target="_blank" class="item-card"><div class="icon-wrapper">💻</div><div class="item-name">WhatsApp</div></a>
+                <a href="https://web.telegram.org/" target="_blank" class="item-card"><div class="icon-wrapper">✈️</div><div class="item-name">Telegram</div></a>
+                <a href="https://web.wechat.com/" target="_blank" class="item-card"><div class="icon-wrapper">🗨️</div><div class="item-name">WeChat</div></a>
+                <a href="https://www.douyin.com/" target="_blank" class="item-card"><div class="icon-wrapper">🎵</div><div class="item-name">Douyin</div></a>
+                <a href="https://www.tiktok.com/" target="_blank" class="item-card"><div class="icon-wrapper">🎼</div><div class="item-name">TikTok</div></a>
+            </div>
+        </section>
+
+        <section id="life" class="section-container web-sec">
+            <div class="section-title">地圖與生活</div>
+            <div class="item-grid">
+                <a href="https://maps.apple.com" target="_blank" class="item-card"><div class="icon-wrapper">🍎</div><div class="item-name">Apple Maps</div></a>
+                <a href="https://www.google.com/maps" target="_blank" class="item-card"><div class="icon-wrapper">🗺️</div><div class="item-name">Maps</div></a>
+                <a href="https://www.map.gov.hk/" target="_blank" class="item-card"><div class="icon-wrapper">📍</div><div class="item-name">GeoInfo</div></a>
+                <a href="https://www.amap.com/" target="_blank" class="item-card"><div class="icon-wrapper">🌏</div><div class="item-name">高德</div></a>
+                <a href="https://www.youtube.com" target="_blank" class="item-card"><div class="icon-wrapper">▶️</div><div class="item-name">YouTube</div></a>
+                <a href="https://www.netflix.com/" target="_blank" class="item-card"><div class="icon-wrapper">🎬</div><div class="item-name">Netflix</div></a>
+                <a href="https://www.jav380.com/page/1" target="_blank" class="item-card"><div class="icon-wrapper">🔞</div><div class="item-name">JAV380</div></a>
+                <a href="https://www.openrice.com" target="_blank" class="item-card"><div class="icon-wrapper">🍚</div><div class="item-name">OpenRice</div></a>
+                <a href="https://world.taobao.com" target="_blank" class="item-card"><div class="icon-wrapper">🛍️</div><div class="item-name">淘寶</div></a>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Data and DOM References
+        const els = {
+            modeBtns: document.querySelectorAll('.seg-btn'),
+            segControl: document.getElementById('seg-control'),
+            tabsGroups: document.querySelectorAll('.tabs-group'),
+            chips: document.querySelectorAll('.chip'),
+            sections: document.querySelectorAll('.section-container'),
+            viewToggle: document.getElementById('btn-toggle-view'),
+            body: document.body
+        };
+
+        // State
+        let currentMode = 'download';
+        let isListView = false;
+
+        // Init
+        function init() {
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            // Mode Switch (Download vs Website)
+            els.modeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    setMode(e.target.dataset.mode);
+                });
+            });
+
+            // Tab Switching
+            els.chips.forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    setTab(e.target.dataset.target, chip);
+                });
+            });
+
+            // View Toggle
+            els.viewToggle.addEventListener('click', toggleView);
+        }
+
+        function setMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+
+            // Update Segmented Control UI
+            els.segControl.dataset.state = mode;
+            els.modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+            // Switch Tabs Group
+            els.tabsGroups.forEach(g => g.classList.remove('active'));
+            const activeGroup = document.getElementById(`tabs-${mode}`);
+            activeGroup.classList.add('active');
+
+            // Click the first tab ("All") in the new group
+            activeGroup.querySelector('.chip').click();
+        }
+
+        function setTab(targetId, clickedChip) {
+            // Update Chip UI
+            const parentGroup = clickedChip.parentElement;
+            parentGroup.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            clickedChip.classList.add('active');
+
+            // Hide all sections first
+            els.sections.forEach(s => s.classList.remove('active'));
+            
+            const titles = document.querySelectorAll('.section-title');
+
+            if (targetId === 'all-download') {
+                document.querySelectorAll('.dl-sec').forEach(s => s.classList.add('active'));
+                titles.forEach(t => t.style.display = 'block');
+            } else if (targetId === 'all-website') {
+                document.querySelectorAll('.web-sec').forEach(s => s.classList.add('active'));
+                titles.forEach(t => t.style.display = 'block');
+            } else {
+                // Show specific section
+                const targetSec = document.getElementById(targetId);
+                if(targetSec) {
+                    targetSec.classList.add('active');
+                    // Hide titles when viewing single category for cleaner look
+                    titles.forEach(t => t.style.display = 'none');
+                }
+            }
+        }
+
+        function toggleView() {
+            isListView = !isListView;
+            if (isListView) {
+                els.body.classList.add('view-list');
+                els.viewToggle.innerHTML = '☰';
+            } else {
+                els.body.classList.remove('view-list');
+                els.viewToggle.innerHTML = '⊞';
+            }
+        }
+
+        // Run
+        init();
+    </script>
+</body>
+</html>
